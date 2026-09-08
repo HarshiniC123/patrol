@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#128C7E">
+  <title>Main Gate Patrol</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Arial, sans-serif;
+      background: #f3f6f5;
+      padding: 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 380px;
+      background: white;
+      border-radius: 20px;
+      padding: 30px 22px;
+      text-align: center;
+      box-shadow: 0 8px 30px rgba(0,0,0,.12);
+    }
+    h1 { margin: 0 0 8px; font-size: 25px; }
+    .time {
+      font-size: 20px;
+      margin: 18px 0 25px;
+      color: #555;
+    }
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 18px 12px;
+      font-size: 19px;
+      font-weight: bold;
+      color: white;
+      background: #128C7E;
+      cursor: pointer;
+    }
+    button:active { transform: scale(.98); }
+    .hint {
+      margin-top: 18px;
+      color: #777;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🚪 Main Gate Patrol</h1>
+    <div class="time" id="time">Current time: --:--</div>
+
+    <button onclick="sendPatrol()">
+      MAIN GATE PATROL DONE ✅
+    </button>
+
+    <div class="hint">
+      Tap the button after completing the patrol.
+      WhatsApp will open with the current time automatically filled in.
+    </div>
+  </div>
+
+  <script>
+    function getCurrentTime() {
+      return new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+      });
+    }
+
+    function updateTime() {
+      document.getElementById("time").textContent =
+        "Current time: " + getCurrentTime();
+    }
+
+    function sendPatrol() {
+      const time = getCurrentTime();
+
+      const message =
+        `MAIN GATE PATROL DONE ✅ Time: ${time}`;
+
+      const phoneNumber = "9291633800";
+
+      const whatsappURL =
+        `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+
+      window.location.href = whatsappURL;
+    }
+
+    updateTime();
+    setInterval(updateTime, 1000);
+  </script>
+</body>
+</html>
