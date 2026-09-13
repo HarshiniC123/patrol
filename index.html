@@ -4,9 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#128C7E">
-  <title>Smart Patrol Check-in & QR Code Generator</title>
-  <!-- Included standalone QRCode rendering library for offline, instant QR generation -->
+  <title>Smart Patrol System & Real-Time QR Router</title>
+  <!-- Client-side QR code Generator -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Client-side QR code Image Reader / Decoder -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     :root {
       --primary: #128C7E;
@@ -39,7 +41,7 @@
 
     .app-container {
       width: 100%;
-      max-width: 460px;
+      max-width: 480px;
     }
 
     .card {
@@ -97,18 +99,30 @@
 
     .icon-btn:hover { background: #e2e8f0; }
 
-    .scanner-badge {
-      display: inline-flex;
+    /* Scan Result Banner */
+    .scan-result-card {
+      background: #ecfdf5;
+      border: 2px solid #10b981;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 18px;
+      text-align: left;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .scan-badge-title {
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 6px;
-      background: #e8f5e9;
-      color: #2e7d32;
-      font-size: 13px;
-      font-weight: 700;
-      padding: 6px 12px;
-      border-radius: 20px;
-      margin-bottom: 16px;
-      border: 1px solid #c8e6c9;
+      font-weight: 800;
+      font-size: 14px;
+      color: #047857;
+      margin-bottom: 8px;
     }
 
     .form-group {
@@ -306,7 +320,7 @@
       background: white;
       border-radius: var(--radius);
       width: 100%;
-      max-width: 620px;
+      max-width: 640px;
       max-height: 90vh;
       display: flex;
       flex-direction: column;
@@ -516,8 +530,18 @@
         <button class="icon-btn" onclick="openSettings()" title="Admin QR Generator & Settings">⚙️</button>
       </div>
 
-      <div id="scannerBadge" class="scanner-badge" style="display: none;">
-        <span>📷 Mapped QR Scanner:</span> <strong id="scannedLocName">--</strong>
+      <!-- SCANNER MATCHED BANNER -->
+      <div id="scanResultCard" class="scan-result-card" style="display: none;">
+        <div class="scan-badge-title">
+          <span>📷 QR CODE SCANNED SUCCESSFULLY</span>
+          <span style="font-size: 11px; background: #10b981; color: white; padding: 2px 6px; border-radius: 4px;">SYNCED</span>
+        </div>
+        <div style="font-size: 13px; color: #065f46; line-height: 1.5;">
+          📍 <strong>Checkpoint:</strong> <span id="scanLocName">--</span><br>
+          ⏰ <strong>Scan Time:</strong> <span id="scanTimeStr">--</span><br>
+          👤 <strong>On Duty Member:</strong> <span id="scanPersonName" style="font-weight: 700; color: #047857;">--</span><br>
+          📞 <strong>Target Mobile:</strong> <span id="scanPhoneNum" style="font-family: monospace; font-weight: bold;">--</span>
+        </div>
       </div>
 
       <div class="form-group">
@@ -543,13 +567,13 @@
             <span class="recipient-name" id="recipientName">--</span>
           </div>
           <div style="text-align: right;">
-            <span style="font-size: 11px; color: #64748b; display: block;">DUTY MOBILE NUMBER</span>
+            <span style="font-size: 11px; color: #64748b; display: block;">TARGET MOBILE NUMBER</span>
             <span class="recipient-phone" id="recipientPhone">--</span>
           </div>
         </div>
       </div>
 
-      <button class="send-btn" onclick="sendPatrolWhatsApp()">
+      <button id="sendWhatsappBtn" class="send-btn" onclick="sendPatrolWhatsApp()">
         <span>PATROL DONE</span> ✅
       </button>
 
@@ -559,17 +583,18 @@
       </div>
 
       <button class="camera-scan-btn" onclick="triggerCameraScan()">
-        📷 Scan Physical QR Code Tag
+        📷 Scan Physical QR Code Photo
       </button>
       <input type="file" id="qrFileInput" accept="image/*" capture="environment" style="display: none;" onchange="handleQRFile(this)">
+      <canvas id="qrCanvas" style="display: none;"></canvas>
 
       <div class="hint">
-        Scanning a location's QR code automatically switches to that location and routes the alert to whoever is on duty at this exact time.
+        Scanning a location QR code instantly reads the current time, finds who is on duty right now for that location, and routes the report to their phone number.
       </div>
     </div>
   </div>
 
-  <!-- ADMIN SETTINGS & QR GENERATOR MODAL -->
+  <!-- ADMIN SETTINGS & TEST SIMULATOR MODAL -->
   <div class="modal-overlay" id="settingsModal">
     <div class="modal-card">
       <div class="modal-header">
@@ -592,6 +617,7 @@
         <div class="modal-tabs">
           <button class="tab-btn active" onclick="switchTab('tabLocations')">📍 Locations & Shifts</button>
           <button class="tab-btn" onclick="switchTab('tabQRCodes')">📷 Mapped QR Codes</button>
+          <button class="tab-btn" onclick="switchTab('tabSimulator')">⏱️ Routing Simulator</button>
           <button class="tab-btn" onclick="switchTab('tabGeneral')">⚙️ General & Backup</button>
           <button class="tab-btn" onclick="switchTab('tabBackup')">💾 Export/Import</button>
         </div>
@@ -625,7 +651,31 @@
             </div>
           </div>
 
-          <!-- TAB 3: GENERAL SETTINGS -->
+          <!-- TAB 3: ROUTING TIME SIMULATOR (TEST TOOL) -->
+          <div id="tabSimulator" class="tab-content">
+            <div style="background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 10px; padding: 12px; margin-bottom: 16px;">
+              <strong style="color: #0369a1;">⏱️ Test Time & Duty Routing Simulator</strong>
+              <p style="font-size: 12px; color: #0284c7; margin: 4px 0 0;">
+                Test any location at any simulated time of day to verify which duty member and phone number will receive the alert!
+              </p>
+            </div>
+
+            <div class="form-group">
+              <label>Select Test Location</label>
+              <select id="simLocSelect" onchange="runRoutingSimulation()"></select>
+            </div>
+
+            <div class="form-group">
+              <label>Simulated Scan Time (24-Hour Format HH:MM)</label>
+              <input type="time" id="simTimeInput" value="10:00" onchange="runRoutingSimulation()">
+            </div>
+
+            <div id="simResultBox" style="background: white; border: 2px dashed #0284c7; border-radius: 12px; padding: 16px; margin-top: 16px; text-align: left;">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- TAB 4: GENERAL SETTINGS -->
           <div id="tabGeneral" class="tab-content">
             <div class="form-group">
               <label>Default Country Code Prefix</label>
@@ -638,10 +688,15 @@
               <input type="password" id="newPinInput" placeholder="Enter new PIN">
             </div>
 
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin: 16px 0;">
+              <input type="checkbox" id="autoOpenWhatsappCheck" style="width: auto;">
+              <label for="autoOpenWhatsappCheck" style="margin: 0; text-transform: none; font-size: 13px;">Auto-Open WhatsApp immediately upon scanning QR Code tag</label>
+            </div>
+
             <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
             <h4>Fallback / Emergency Contact</h4>
-            <p style="font-size: 12px; color: var(--text-muted); margin-top: -6px;">Used when current time falls outside all shift hours.</p>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: -6px;">Used when current scan time falls outside all shift hours.</p>
 
             <div class="form-group">
               <label>Fallback Contact Name</label>
@@ -655,7 +710,7 @@
             <button class="btn-sm btn-primary" onclick="saveGeneralSettings()">Save General Settings</button>
           </div>
 
-          <!-- TAB 4: EXPORT / IMPORT -->
+          <!-- TAB 5: EXPORT / IMPORT -->
           <div id="tabBackup" class="tab-content">
             <h4>Configuration Backup & Sync</h4>
             <p style="font-size: 13px; color: var(--text-muted);">
@@ -690,6 +745,7 @@
     const INITIAL_SETTINGS = {
       adminPin: "1234",
       defaultCountryCode: "91",
+      autoOpenWhatsapp: false,
       fallbackContact: {
         name: "Control Room Supervisor",
         phone: "9291633800"
@@ -788,11 +844,12 @@
       if (document.getElementById('adminView').style.display !== 'none') {
         renderLocationsTab();
         renderQRCodesTab();
+        populateSimLocations();
       }
     }
 
     function initApp() {
-      // Parse QR Scanner parameter from URL
+      // Parse QR Scanner parameter from URL when scanned
       const urlParams = new URLSearchParams(window.location.search);
       const urlLoc = urlParams.get('loc') || urlParams.get('location');
 
@@ -802,8 +859,23 @@
         const matched = settings.locations.find(l => l.id.toLowerCase() === urlLoc.toLowerCase());
         activeLocationId = matched.id;
         document.getElementById('locationSelect').value = activeLocationId;
-        document.getElementById('scannerBadge').style.display = 'inline-flex';
-        document.getElementById('scannedLocName').textContent = matched.name;
+        
+        // Trigger Scan Match Banner
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        
+        // Evaluate immediately
+        updateClockAndShift();
+
+        document.getElementById('scanResultCard').style.display = 'block';
+        document.getElementById('scanLocName').textContent = matched.name;
+        document.getElementById('scanTimeStr').textContent = timeStr;
+        document.getElementById('scanPersonName').textContent = activeShift ? activeShift.personName : settings.fallbackContact.name;
+        document.getElementById('scanPhoneNum').textContent = formatPhoneDisplay(activeShift ? activeShift.phone : settings.fallbackContact.phone);
+
+        if (settings.autoOpenWhatsapp) {
+          setTimeout(sendPatrolWhatsApp, 1200);
+        }
       } else if (settings.locations.length > 0) {
         activeLocationId = settings.locations[0].id;
         document.getElementById('locationSelect').value = activeLocationId;
@@ -829,6 +901,7 @@
 
     function onLocationChange() {
       activeLocationId = document.getElementById("locationSelect").value;
+      document.getElementById('scanResultCard').style.display = 'none';
       updateClockAndShift();
     }
 
@@ -848,27 +921,7 @@
       }
 
       const currentMins = now.getHours() * 60 + now.getMinutes();
-      let matchedShift = null;
-
-      for (const shift of location.shifts) {
-        const [sH, sM] = shift.startTime.split(':').map(Number);
-        const [eH, eM] = shift.endTime.split(':').map(Number);
-        const startMins = sH * 60 + sM;
-        const endMins = eH * 60 + eM;
-
-        if (startMins < endMins) {
-          if (currentMins >= startMins && currentMins < endMins) {
-            matchedShift = shift;
-            break;
-          }
-        } else {
-          // Overnight shift (e.g. 22:00 to 06:00)
-          if (currentMins >= startMins || currentMins < endMins) {
-            matchedShift = shift;
-            break;
-          }
-        }
-      }
+      let matchedShift = evaluateShiftAtTime(location, currentMins);
 
       if (matchedShift) {
         activeShift = matchedShift;
@@ -876,9 +929,28 @@
         document.getElementById('shiftTime').textContent = `${format12H(matchedShift.startTime)} - ${format12H(matchedShift.endTime)}`;
         document.getElementById('recipientName').textContent = matchedShift.personName;
         document.getElementById('recipientPhone').textContent = formatPhoneDisplay(matchedShift.phone);
+        document.getElementById('sendWhatsappBtn').innerHTML = `<span>PATROL DONE ➔ ALERT ${matchedShift.personName.toUpperCase()}</span> ✅`;
       } else {
         useFallbackShift("Outside Duty Shift Hours");
       }
+    }
+
+    function evaluateShiftAtTime(location, currentMins) {
+      if (!location || !location.shifts) return null;
+      for (const shift of location.shifts) {
+        const [sH, sM] = shift.startTime.split(':').map(Number);
+        const [eH, eM] = shift.endTime.split(':').map(Number);
+        const startMins = sH * 60 + sM;
+        const endMins = eH * 60 + eM;
+
+        if (startMins < endMins) {
+          if (currentMins >= startMins && currentMins < endMins) return shift;
+        } else {
+          // Overnight shift (e.g. 22:00 to 06:00)
+          if (currentMins >= startMins || currentMins < endMins) return shift;
+        }
+      }
+      return null;
     }
 
     function useFallbackShift(reason) {
@@ -893,6 +965,7 @@
       document.getElementById('shiftTime').textContent = "Control Room Route";
       document.getElementById('recipientName').textContent = activeShift.personName;
       document.getElementById('recipientPhone').textContent = formatPhoneDisplay(activeShift.phone);
+      document.getElementById('sendWhatsappBtn').innerHTML = `<span>PATROL DONE ➔ ALERT CONTROL ROOM</span> ✅`;
     }
 
     function format12H(time24) {
@@ -935,7 +1008,7 @@
 📅 *Date:* ${dateStr}
 👤 *Duty Member:* ${personName}
 🏷️ *Shift:* ${shiftTitle}
-✅ *Status:* Patrol completed successfully.`;
+✅ *Status:* Patrol completed & verified.`;
 
       const targetPhone = getSanitizedPhone(activeShift ? activeShift.phone : settings.fallbackContact.phone);
       const whatsappURL = `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
@@ -956,13 +1029,69 @@
       window.location.href = `sms:+${targetPhone}?body=${encodeURIComponent(message)}`;
     }
 
+    // --- CAMERA / IMAGE QR CODE DECODER (jsQR) ---
     function triggerCameraScan() {
       document.getElementById('qrFileInput').click();
     }
 
     function handleQRFile(input) {
-      if (input.files && input.files[0]) {
-        alert("Image selected. Switch location via dropdown or scan direct QR link.");
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.getElementById('qrCanvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0, img.width, img.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          
+          if (typeof jsQR !== "undefined") {
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code && code.data) {
+              processDecodedQRUrl(code.data);
+            } else {
+              alert("Could not detect a QR Code in this photo. Please try a clearer picture of the location QR tag.");
+            }
+          } else {
+            alert("QR decoder loaded. Please try scanning again.");
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function processDecodedQRUrl(qrText) {
+      let locId = "";
+      if (qrText.includes("loc=")) {
+        const parts = qrText.split("loc=");
+        locId = parts[1].split("&")[0];
+      } else {
+        locId = qrText.trim();
+      }
+
+      const matched = settings.locations.find(l => l.id.toLowerCase() === locId.toLowerCase());
+      if (matched) {
+        activeLocationId = matched.id;
+        document.getElementById('locationSelect').value = activeLocationId;
+        
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        updateClockAndShift();
+
+        document.getElementById('scanResultCard').style.display = 'block';
+        document.getElementById('scanLocName').textContent = matched.name;
+        document.getElementById('scanTimeStr').textContent = timeStr;
+        document.getElementById('scanPersonName').textContent = activeShift ? activeShift.personName : settings.fallbackContact.name;
+        document.getElementById('scanPhoneNum').textContent = formatPhoneDisplay(activeShift ? activeShift.phone : settings.fallbackContact.phone);
+
+        alert(`📷 Scanned Location: ${matched.name}\n👤 On-Duty Person: ${activeShift ? activeShift.personName : settings.fallbackContact.name}\n📞 Target Mobile: ${activeShift ? activeShift.phone : settings.fallbackContact.phone}`);
+      } else {
+        alert(`QR Code scanned: "${qrText}", but no matching location ID was found in your settings.`);
       }
     }
 
@@ -997,6 +1126,7 @@
       document.getElementById('adminView').style.display = 'flex';
       renderLocationsTab();
       renderQRCodesTab();
+      populateSimLocations();
       loadGeneralSettings();
     }
 
@@ -1009,6 +1139,8 @@
 
       if (tabId === 'tabQRCodes') {
         renderQRCodesTab();
+      } else if (tabId === 'tabSimulator') {
+        populateSimLocations();
       }
     }
 
@@ -1113,7 +1245,7 @@
       const loc = settings.locations.find(l => l.id === locId);
       if (!loc) return;
 
-      const name = prompt("Shift / Duty Title (e.g. Morning Shift):", "Morning Shift");
+      const name = prompt("Shift / Duty Title (e.g. Morning Duty):", "Morning Duty");
       if (!name) return;
       const startTime = prompt("Start Time (24-hour HH:MM, e.g. 06:00):", "06:00");
       if (!startTime) return;
@@ -1121,7 +1253,7 @@
       if (!endTime) return;
       const personName = prompt("Duty Member / Officer Name:", "John Doe");
       if (!personName) return;
-      const phone = prompt("WhatsApp Mobile Number for Duty Member:", "9291633800");
+      const phone = prompt("WhatsApp Mobile Number for this Duty Member:", "9291633800");
       if (!phone) return;
 
       loc.shifts.push({
@@ -1220,7 +1352,7 @@
         `;
         container.appendChild(card);
 
-        // Render QR Code using standalone QRCode library (or fallback img)
+        // Render QR Code using standalone QRCode library
         setTimeout(() => {
           const targetBox = document.getElementById(qrContainerId);
           if (targetBox) {
@@ -1235,7 +1367,6 @@
                 correctLevel : QRCode.CorrectLevel.H
               });
             } else {
-              // Fallback to image generator
               const img = document.createElement('img');
               img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(fullUrl)}`;
               img.style.width = "160px";
@@ -1245,6 +1376,67 @@
           }
         }, 50);
       });
+    }
+
+    // TAB 3: ROUTING TIME SIMULATOR
+    function populateSimLocations() {
+      const select = document.getElementById('simLocSelect');
+      select.innerHTML = "";
+      settings.locations.forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value = loc.id;
+        opt.textContent = loc.name;
+        select.appendChild(opt);
+      });
+      runRoutingSimulation();
+    }
+
+    function runRoutingSimulation() {
+      const locId = document.getElementById('simLocSelect').value;
+      const timeVal = document.getElementById('simTimeInput').value || "10:00";
+      const resultBox = document.getElementById('simResultBox');
+
+      const loc = settings.locations.find(l => l.id === locId);
+      if (!loc) {
+        resultBox.innerHTML = "<em>No location selected.</em>";
+        return;
+      }
+
+      const [h, m] = timeVal.split(':').map(Number);
+      const testMins = h * 60 + m;
+
+      const shift = evaluateShiftAtTime(loc, testMins);
+
+      const time12H = format12H(timeVal);
+
+      if (shift) {
+        const targetPhone = getSanitizedPhone(shift.phone);
+        resultBox.innerHTML = `
+          <div style="color: #0369a1; font-weight: 700; font-size: 15px; margin-bottom: 8px;">
+            ✅ SIMULATION MATCHED ACTIVE SHIFT!
+          </div>
+          <div>📍 <strong>Location:</strong> ${loc.name}</div>
+          <div>⏰ <strong>Simulated Scan Time:</strong> ${time12H} (${timeVal})</div>
+          <div>🏷️ <strong>Matched Shift:</strong> ${shift.name} (${format12H(shift.startTime)} - ${format12H(shift.endTime)})</div>
+          <div>👤 <strong>ON DUTY MEMBER:</strong> <span style="font-weight:bold; color:#0369a1;">${shift.personName}</span></div>
+          <div>📞 <strong>TARGET MOBILE:</strong> <span style="font-weight:bold; font-family:monospace;">${formatPhoneDisplay(shift.phone)}</span></div>
+          <div style="margin-top: 10px; background: #e0f2fe; padding: 8px; border-radius: 6px; font-size: 11px;">
+            💬 <strong>WhatsApp Target URL:</strong><br>
+            <code>https://wa.me/${targetPhone}?text=PATROL...</code>
+          </div>
+        `;
+      } else {
+        const targetPhone = getSanitizedPhone(settings.fallbackContact.phone);
+        resultBox.innerHTML = `
+          <div style="color: #b45309; font-weight: 700; font-size: 15px; margin-bottom: 8px;">
+            ⚠️ SIMULATION FALLBACK (NO SHIFT MATCH)
+          </div>
+          <div>📍 <strong>Location:</strong> ${loc.name}</div>
+          <div>⏰ <strong>Simulated Scan Time:</strong> ${time12H} (${timeVal})</div>
+          <div>👤 <strong>FALLBACK MEMBER:</strong> <span style="font-weight:bold; color:#b45309;">${settings.fallbackContact.name}</span></div>
+          <div>📞 <strong>TARGET MOBILE:</strong> <span style="font-weight:bold; font-family:monospace;">${formatPhoneDisplay(settings.fallbackContact.phone)}</span></div>
+        `;
+      }
     }
 
     function printSingleQR(locId) {
@@ -1294,9 +1486,10 @@
       window.print();
     }
 
-    // TAB 3: GENERAL SETTINGS
+    // TAB 4: GENERAL SETTINGS
     function loadGeneralSettings() {
       document.getElementById('countryCodeInput').value = settings.defaultCountryCode || '91';
+      document.getElementById('autoOpenWhatsappCheck').checked = !!settings.autoOpenWhatsapp;
       document.getElementById('fallbackNameInput').value = settings.fallbackContact.name || '';
       document.getElementById('fallbackPhoneInput').value = settings.fallbackContact.phone || '';
       document.getElementById('newPinInput').value = '';
@@ -1304,20 +1497,22 @@
 
     function saveGeneralSettings() {
       const countryCode = document.getElementById('countryCodeInput').value.trim();
+      const autoOpen = document.getElementById('autoOpenWhatsappCheck').checked;
       const newPin = document.getElementById('newPinInput').value.trim();
       const fallbackName = document.getElementById('fallbackNameInput').value.trim();
       const fallbackPhone = document.getElementById('fallbackPhoneInput').value.trim();
 
       if (countryCode) settings.defaultCountryCode = countryCode;
+      settings.autoOpenWhatsapp = autoOpen;
       if (newPin) settings.adminPin = newPin;
       if (fallbackName) settings.fallbackContact.name = fallbackName;
       if (fallbackPhone) settings.fallbackContact.phone = fallbackPhone;
 
       saveAndSyncAll();
-      alert("General settings saved and synced successfully!");
+      alert("General settings saved successfully!");
     }
 
-    // TAB 4: BACKUP & SYNC
+    // TAB 5: BACKUP & SYNC
     function exportConfig() {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(settings, null, 2));
       const downloadAnchor = document.createElement('a');
