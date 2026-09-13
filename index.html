@@ -99,6 +99,29 @@
 
     .icon-btn:hover { background: #e2e8f0; }
 
+    /* Toast Notification */
+    .toast-notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #10b981;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 2000;
+      display: none;
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from { top: -50px; opacity: 0; }
+      to { top: 20px; opacity: 1; }
+    }
+
     /* Scan Result Banner */
     .scan-result-card {
       background: #ecfdf5;
@@ -517,6 +540,9 @@
 </head>
 <body>
 
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastNotification" class="toast-notification">✓ Settings Saved & Auto-Synced!</div>
+
   <div class="app-container">
     <div class="card">
       <div class="header-bar">
@@ -712,7 +738,7 @@
 
           <!-- TAB 5: EXPORT / IMPORT -->
           <div id="tabBackup" class="tab-content">
-            <h4>Configuration Backup & Sync</h4>
+            <h4>Configuration Backup & Device Sync</h4>
             <p style="font-size: 13px; color: var(--text-muted);">
               Export your setup as a JSON file to transfer all location QR mappings and shift rosters to other phones/scanners.
             </p>
@@ -741,7 +767,7 @@
   <div id="printableArea" style="display: none;"></div>
 
   <script>
-    // INITIAL ACCURATE SYSTEM CONFIGURATION (SYNCED WITH USER DUTY ROSTER)
+    // INITIAL ACCURATE SYSTEM CONFIGURATION (MATCHED WITH YOUR DUTY ROSTER)
     const INITIAL_SETTINGS = {
       adminPin: "1234",
       defaultCountryCode: "91",
@@ -783,7 +809,6 @@
     let isAuthenticated = false;
 
     // --- ROBUST TIME PARSING ENGINE ---
-    // Seamlessly parses "8:00 AM", "10:01 AM", "4:00 PM", "08:00", "16:00", "8:00"
     function parseTimeToMinutes(timeStr) {
       if (!timeStr) return 0;
       timeStr = String(timeStr).trim().toUpperCase();
@@ -791,7 +816,6 @@
       const isPM = timeStr.includes('PM');
       const isAM = timeStr.includes('AM');
 
-      // Strip non-digit and non-colon characters
       const clean = timeStr.replace(/[^\d:]/g, '');
       const parts = clean.split(':');
       if (parts.length === 0 || parts[0] === "") return 0;
@@ -811,7 +835,6 @@
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          // Self-healing check: purge legacy dummy "John Doe" data if found
           const hasDummy = JSON.stringify(parsed).includes("John Doe");
           if (!hasDummy && parsed.locations && parsed.locations.length > 0) {
             return parsed;
@@ -823,14 +846,43 @@
 
     function saveAndSyncAll() {
       localStorage.setItem("patrol_settings", JSON.stringify(settings));
+      
+      // Preserve active location selection
+      const currentLoc = activeLocationId;
       populateLocationDropdown();
+      if (currentLoc && settings.locations.some(l => l.id === currentLoc)) {
+        activeLocationId = currentLoc;
+        document.getElementById("locationSelect").value = activeLocationId;
+      } else if (settings.locations.length > 0) {
+        activeLocationId = settings.locations[0].id;
+        document.getElementById("locationSelect").value = activeLocationId;
+      }
+
       updateClockAndShift();
+
       if (document.getElementById('adminView').style.display !== 'none') {
         renderLocationsTab();
         renderQRCodesTab();
         populateSimLocations();
       }
+
+      showToast("✓ Settings Saved & Auto-Synced Live!");
     }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toastNotification');
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 2200);
+    }
+
+    // CROSS-TAB LIVE SYNC EVENT LISTENER
+    window.addEventListener('storage', function(e) {
+      if (e.key === "patrol_settings") {
+        settings = loadSettings();
+        saveAndSyncAll();
+      }
+    });
 
     function initApp() {
       // Parse QR Scanner parameter from URL when scanned
@@ -839,24 +891,26 @@
 
       populateLocationDropdown();
 
-      if (urlLoc && settings.locations.some(l => l.id.toLowerCase() === urlLoc.toLowerCase())) {
-        const matched = settings.locations.find(l => l.id.toLowerCase() === urlLoc.toLowerCase());
-        activeLocationId = matched.id;
-        document.getElementById('locationSelect').value = activeLocationId;
-        
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-        
-        updateClockAndShift();
+      if (urlLoc) {
+        const matched = findLocationByFlexibleId(urlLoc);
+        if (matched) {
+          activeLocationId = matched.id;
+          document.getElementById('locationSelect').value = activeLocationId;
+          
+          const now = new Date();
+          const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+          
+          updateClockAndShift();
 
-        document.getElementById('scanResultCard').style.display = 'block';
-        document.getElementById('scanLocName').textContent = matched.name;
-        document.getElementById('scanTimeStr').textContent = timeStr;
-        document.getElementById('scanPersonName').textContent = activeShift ? activeShift.personName : settings.fallbackContact.name;
-        document.getElementById('scanPhoneNum').textContent = formatPhoneDisplay(activeShift ? activeShift.phone : settings.fallbackContact.phone);
+          document.getElementById('scanResultCard').style.display = 'block';
+          document.getElementById('scanLocName').textContent = matched.name;
+          document.getElementById('scanTimeStr').textContent = timeStr;
+          document.getElementById('scanPersonName').textContent = activeShift ? activeShift.personName : settings.fallbackContact.name;
+          document.getElementById('scanPhoneNum').textContent = formatPhoneDisplay(activeShift ? activeShift.phone : settings.fallbackContact.phone);
 
-        if (settings.autoOpenWhatsapp) {
-          setTimeout(sendPatrolWhatsApp, 1200);
+          if (settings.autoOpenWhatsapp) {
+            setTimeout(sendPatrolWhatsApp, 1200);
+          }
         }
       } else if (settings.locations.length > 0) {
         activeLocationId = settings.locations[0].id;
@@ -865,6 +919,16 @@
 
       updateClockAndShift();
       setInterval(updateClockAndShift, 1000);
+    }
+
+    function findLocationByFlexibleId(searchStr) {
+      if (!searchStr) return null;
+      const clean = searchStr.trim().toLowerCase();
+      return settings.locations.find(l => 
+        l.id.toLowerCase() === clean || 
+        l.name.toLowerCase() === clean ||
+        l.id.replace(/-/g, '') === clean.replace(/[^a-z0-9]/gi, '')
+      );
     }
 
     function populateLocationDropdown() {
@@ -1046,7 +1110,7 @@
         locId = qrText.trim();
       }
 
-      const matched = settings.locations.find(l => l.id.toLowerCase() === locId.toLowerCase());
+      const matched = findLocationByFlexibleId(locId);
       if (matched) {
         activeLocationId = matched.id;
         document.getElementById('locationSelect').value = activeLocationId;
@@ -1190,7 +1254,6 @@
       });
       
       saveAndSyncAll();
-      alert(`Location "${name}" created! A unique QR Code tag has been generated and auto-synced.`);
     }
 
     function editLocationPrompt(locId) {
@@ -1478,7 +1541,6 @@
       if (fallbackPhone) settings.fallbackContact.phone = fallbackPhone;
 
       saveAndSyncAll();
-      alert("General settings saved successfully!");
     }
 
     // TAB 5: BACKUP & SYNC
@@ -1503,7 +1565,6 @@
         if (imported.locations && Array.isArray(imported.locations)) {
           settings = imported;
           saveAndSyncAll();
-          alert("Configuration imported and all QR codes synced!");
         } else {
           alert("Invalid configuration structure.");
         }
@@ -1516,7 +1577,6 @@
       if (confirm("Reset ALL settings, locations, and schedules back to factory defaults?")) {
         settings = JSON.parse(JSON.stringify(INITIAL_SETTINGS));
         saveAndSyncAll();
-        alert("System reset to initial defaults!");
       }
     }
 
