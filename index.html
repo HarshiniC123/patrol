@@ -521,10 +521,10 @@
     <div class="card">
       <div class="header-bar">
         <div class="title-group">
-          <span class="app-icon">🛡️</span>
+          <span class="app-icon">🚪</span>
           <div>
-            <h1>Smart Patrol System</h1>
-            <p class="subtitle">1:1 QR Scanner & Duty Timing Router</p>
+            <h1>Main Gate Patrol</h1>
+            <p class="subtitle">Real-Time Duty Router</p>
           </div>
         </div>
         <button class="icon-btn" onclick="openSettings()" title="Admin QR Generator & Settings">⚙️</button>
@@ -534,7 +534,7 @@
       <div id="scanResultCard" class="scan-result-card" style="display: none;">
         <div class="scan-badge-title">
           <span>📷 QR CODE SCANNED SUCCESSFULLY</span>
-          <span style="font-size: 11px; background: #10b981; color: white; padding: 2px 6px; border-radius: 4px;">SYNCED</span>
+          <span style="font-size: 11px; background: #10b981; color: white; padding: 2px 6px; border-radius: 4px;">LIVE MATCH</span>
         </div>
         <div style="font-size: 13px; color: #065f46; line-height: 1.5;">
           📍 <strong>Checkpoint:</strong> <span id="scanLocName">--</span><br>
@@ -589,7 +589,7 @@
       <canvas id="qrCanvas" style="display: none;"></canvas>
 
       <div class="hint">
-        Scanning a location QR code instantly reads the current time, finds who is on duty right now for that location, and routes the report to their phone number.
+        Scanning a location QR code instantly reads current scan time, identifies who is on duty right now for that location, and routes the report to their mobile number.
       </div>
     </div>
   </div>
@@ -666,8 +666,8 @@
             </div>
 
             <div class="form-group">
-              <label>Simulated Scan Time (24-Hour Format HH:MM)</label>
-              <input type="time" id="simTimeInput" value="10:00" onchange="runRoutingSimulation()">
+              <label>Simulated Scan Time</label>
+              <input type="text" id="simTimeInput" value="11:07 AM" placeholder="e.g. 11:07 AM or 11:07" onchange="runRoutingSimulation()" onkeyup="runRoutingSimulation()">
             </div>
 
             <div id="simResultBox" style="background: white; border: 2px dashed #0284c7; border-radius: 12px; padding: 16px; margin-top: 16px; text-align: left;">
@@ -695,16 +695,16 @@
 
             <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
-            <h4>Fallback / Emergency Contact</h4>
-            <p style="font-size: 12px; color: var(--text-muted); margin-top: -6px;">Used when current scan time falls outside all shift hours.</p>
+            <h4>Fallback / Off-Duty Contact</h4>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: -6px;">Used ONLY if a scan time falls outside all scheduled shift hours.</p>
 
             <div class="form-group">
               <label>Fallback Contact Name</label>
-              <input type="text" id="fallbackNameInput" placeholder="Control Room Supervisor">
+              <input type="text" id="fallbackNameInput" placeholder="Security Control Desk">
             </div>
             <div class="form-group">
               <label>Fallback Mobile Number</label>
-              <input type="text" id="fallbackPhoneInput" placeholder="9291633800">
+              <input type="text" id="fallbackPhoneInput" placeholder="9492470435">
             </div>
 
             <button class="btn-sm btn-primary" onclick="saveGeneralSettings()">Save General Settings</button>
@@ -741,82 +741,36 @@
   <div id="printableArea" style="display: none;"></div>
 
   <script>
-    // INITIAL SYSTEM CONFIGURATION
+    // INITIAL ACCURATE SYSTEM CONFIGURATION (SYNCED WITH USER DUTY ROSTER)
     const INITIAL_SETTINGS = {
       adminPin: "1234",
       defaultCountryCode: "91",
       autoOpenWhatsapp: false,
       fallbackContact: {
-        name: "Control Room Supervisor",
-        phone: "9291633800"
+        name: "Security Control Desk",
+        phone: "9492470435"
       },
       locations: [
         {
           id: "main-gate",
-          name: "Main Gate Checkpoint",
+          name: "Main Gate",
           icon: "🚪",
           shifts: [
             {
               id: "shift-mg-1",
-              name: "Morning Duty",
-              startTime: "06:00",
-              endTime: "14:00",
-              personName: "John Doe (Supervisor)",
-              phone: "9291633800"
+              name: "Day Shift",
+              startTime: "8:00 AM",
+              endTime: "10:00 AM",
+              personName: "harshini",
+              phone: "9492470435"
             },
             {
               id: "shift-mg-2",
-              name: "Evening Duty",
-              startTime: "14:00",
-              endTime: "22:00",
-              personName: "Alex Smith",
-              phone: "9876543210"
-            },
-            {
-              id: "shift-mg-3",
-              name: "Night Duty",
-              startTime: "22:00",
-              endTime: "06:00",
-              personName: "Robert Johnson",
-              phone: "9123456789"
-            }
-          ]
-        },
-        {
-          id: "back-gate",
-          name: "Rear / Back Gate Entry",
-          icon: "🏗️",
-          shifts: [
-            {
-              id: "shift-bg-1",
-              name: "Day Duty",
-              startTime: "08:00",
-              endTime: "20:00",
-              personName: "David Miller",
-              phone: "9291633800"
-            },
-            {
-              id: "shift-bg-2",
-              name: "Night Duty",
-              startTime: "20:00",
-              endTime: "08:00",
-              personName: "Michael Brown",
-              phone: "9876543210"
-            }
-          ]
-        },
-        {
-          id: "warehouse",
-          name: "Warehouse Depot",
-          icon: "📦",
-          shifts: [
-            {
-              id: "shift-wh-1",
-              name: "24/7 Security Desk",
-              startTime: "00:00",
-              endTime: "23:59",
-              personName: "Warehouse Duty Manager",
-              phone: "9291633800"
+              name: "Day Shift",
+              startTime: "10:01 AM",
+              endTime: "4:00 PM",
+              personName: "vamsi",
+              phone: "9347949918"
             }
           ]
         }
@@ -828,11 +782,41 @@
     let activeShift = null;
     let isAuthenticated = false;
 
-    // --- STATE PERSISTENCE & SYNC ---
+    // --- ROBUST TIME PARSING ENGINE ---
+    // Seamlessly parses "8:00 AM", "10:01 AM", "4:00 PM", "08:00", "16:00", "8:00"
+    function parseTimeToMinutes(timeStr) {
+      if (!timeStr) return 0;
+      timeStr = String(timeStr).trim().toUpperCase();
+
+      const isPM = timeStr.includes('PM');
+      const isAM = timeStr.includes('AM');
+
+      // Strip non-digit and non-colon characters
+      const clean = timeStr.replace(/[^\d:]/g, '');
+      const parts = clean.split(':');
+      if (parts.length === 0 || parts[0] === "") return 0;
+
+      let h = parseInt(parts[0], 10) || 0;
+      let m = parts.length > 1 ? (parseInt(parts[1], 10) || 0) : 0;
+
+      if (isPM && h < 12) h += 12;
+      if (isAM && h === 12) h = 0;
+
+      return h * 60 + m;
+    }
+
+    // --- STATE PERSISTENCE & AUTO-MIGRATION ---
     function loadSettings() {
       const stored = localStorage.getItem("patrol_settings");
       if (stored) {
-        try { return JSON.parse(stored); } catch (e) { console.error(e); }
+        try {
+          const parsed = JSON.parse(stored);
+          // Self-healing check: purge legacy dummy "John Doe" data if found
+          const hasDummy = JSON.stringify(parsed).includes("John Doe");
+          if (!hasDummy && parsed.locations && parsed.locations.length > 0) {
+            return parsed;
+          }
+        } catch (e) { console.error(e); }
       }
       return JSON.parse(JSON.stringify(INITIAL_SETTINGS));
     }
@@ -860,11 +844,9 @@
         activeLocationId = matched.id;
         document.getElementById('locationSelect').value = activeLocationId;
         
-        // Trigger Scan Match Banner
         const now = new Date();
         const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         
-        // Evaluate immediately
         updateClockAndShift();
 
         document.getElementById('scanResultCard').style.display = 'block';
@@ -905,7 +887,7 @@
       updateClockAndShift();
     }
 
-    // --- TIME & SHIFT EVALUATION ENGINE ---
+    // --- ACCURATE TIME & SHIFT EVALUATION ENGINE ---
     function updateClockAndShift() {
       const now = new Date();
       
@@ -926,7 +908,7 @@
       if (matchedShift) {
         activeShift = matchedShift;
         document.getElementById('shiftName').textContent = matchedShift.name;
-        document.getElementById('shiftTime').textContent = `${format12H(matchedShift.startTime)} - ${format12H(matchedShift.endTime)}`;
+        document.getElementById('shiftTime').textContent = `${matchedShift.startTime} - ${matchedShift.endTime}`;
         document.getElementById('recipientName').textContent = matchedShift.personName;
         document.getElementById('recipientPhone').textContent = formatPhoneDisplay(matchedShift.phone);
         document.getElementById('sendWhatsappBtn').innerHTML = `<span>PATROL DONE ➔ ALERT ${matchedShift.personName.toUpperCase()}</span> ✅`;
@@ -938,16 +920,14 @@
     function evaluateShiftAtTime(location, currentMins) {
       if (!location || !location.shifts) return null;
       for (const shift of location.shifts) {
-        const [sH, sM] = shift.startTime.split(':').map(Number);
-        const [eH, eM] = shift.endTime.split(':').map(Number);
-        const startMins = sH * 60 + sM;
-        const endMins = eH * 60 + eM;
+        const startMins = parseTimeToMinutes(shift.startTime);
+        const endMins = parseTimeToMinutes(shift.endTime);
 
         if (startMins < endMins) {
-          if (currentMins >= startMins && currentMins < endMins) return shift;
+          if (currentMins >= startMins && currentMins <= endMins) return shift;
         } else {
           // Overnight shift (e.g. 22:00 to 06:00)
-          if (currentMins >= startMins || currentMins < endMins) return shift;
+          if (currentMins >= startMins || currentMins <= endMins) return shift;
         }
       }
       return null;
@@ -962,18 +942,10 @@
         phone: settings.fallbackContact.phone
       };
       document.getElementById('shiftName').textContent = activeShift.name;
-      document.getElementById('shiftTime').textContent = "Control Room Route";
+      document.getElementById('shiftTime').textContent = "Control Desk Route";
       document.getElementById('recipientName').textContent = activeShift.personName;
       document.getElementById('recipientPhone').textContent = formatPhoneDisplay(activeShift.phone);
-      document.getElementById('sendWhatsappBtn').innerHTML = `<span>PATROL DONE ➔ ALERT CONTROL ROOM</span> ✅`;
-    }
-
-    function format12H(time24) {
-      if (!time24 || time24 === "--:--") return "--:--";
-      const [h, m] = time24.split(':').map(Number);
-      const period = h >= 12 ? 'PM' : 'AM';
-      const h12 = h % 12 || 12;
-      return `${h12}:${m < 10 ? '0' : ''}${m} ${period}`;
+      document.getElementById('sendWhatsappBtn').innerHTML = `<span>PATROL DONE ➔ ALERT CONTROL DESK</span> ✅`;
     }
 
     function formatPhoneDisplay(phone) {
@@ -992,12 +964,12 @@
     // --- WHATSAPP & COMMUNICATIONS ---
     function sendPatrolWhatsApp() {
       const location = settings.locations.find(l => l.id === activeLocationId);
-      const locName = location ? location.name : "Unknown Location";
+      const locName = location ? location.name : "Main Gate";
       const now = new Date();
       const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
       const dateStr = now.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 
-      const shiftTitle = activeShift ? activeShift.name : "General Patrol";
+      const shiftTitle = activeShift ? activeShift.name : "Day Shift";
       const personName = activeShift ? activeShift.personName : "Duty Officer";
 
       const message = 
@@ -1022,7 +994,7 @@
 
     function sendPatrolSMS() {
       const location = settings.locations.find(l => l.id === activeLocationId);
-      const locName = location ? location.name : "Unknown Location";
+      const locName = location ? location.name : "Main Gate";
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
       const message = `PATROL DONE: ${locName} at ${timeStr}.`;
       const targetPhone = getSanitizedPhone(activeShift ? activeShift.phone : settings.fallbackContact.phone);
@@ -1089,7 +1061,7 @@
         document.getElementById('scanPersonName').textContent = activeShift ? activeShift.personName : settings.fallbackContact.name;
         document.getElementById('scanPhoneNum').textContent = formatPhoneDisplay(activeShift ? activeShift.phone : settings.fallbackContact.phone);
 
-        alert(`📷 Scanned Location: ${matched.name}\n👤 On-Duty Person: ${activeShift ? activeShift.personName : settings.fallbackContact.name}\n📞 Target Mobile: ${activeShift ? activeShift.phone : settings.fallbackContact.phone}`);
+        alert(`📷 Scanned Location: ${matched.name}\n👤 On-Duty Member: ${activeShift ? activeShift.personName : settings.fallbackContact.name}\n📞 Target Mobile: ${activeShift ? activeShift.phone : settings.fallbackContact.phone}`);
       } else {
         alert(`QR Code scanned: "${qrText}", but no matching location ID was found in your settings.`);
       }
@@ -1158,14 +1130,14 @@
           shiftsHtml += `
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-top: 8px;">
               <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 13px;">
-                <span>⏰ ${shift.name} (${format12H(shift.startTime)} - ${format12H(shift.endTime)})</span>
+                <span>⏰ ${shift.name} (${shift.startTime} - ${shift.endTime})</span>
                 <div>
                   <span class="action-badge edit-badge" onclick="editShiftPrompt('${loc.id}', '${shift.id}')">Edit Member</span>
                   <span class="action-badge delete-badge" onclick="deleteShift('${loc.id}', '${shift.id}')">Del</span>
                 </div>
               </div>
               <div style="font-size: 12px; color: #475569; margin-top: 4px;">
-                👤 <strong>Duty Member:</strong> ${shift.personName} | 📞 <strong>Mobile:</strong> ${shift.phone}
+                👤 <strong>Duty Member:</strong> <span style="color:#0f766e; font-weight:bold;">${shift.personName}</span> | 📞 <strong>Mobile:</strong> <span style="font-family:monospace; font-weight:bold;">${shift.phone}</span>
               </div>
             </div>
           `;
@@ -1200,7 +1172,7 @@
     }
 
     function openAddLocationPrompt() {
-      const name = prompt("Enter New Location Name (e.g., North Gate / Main Entrance):");
+      const name = prompt("Enter New Location Name (e.g., Main Gate):", "Main Gate");
       if (!name) return;
       const id = prompt("Enter Location Code ID for QR scanner:", name.toLowerCase().replace(/[^a-z0-9]/g, '-'));
       if (!id) return;
@@ -1213,7 +1185,7 @@
       settings.locations.push({
         id: id,
         name: name,
-        icon: "📍",
+        icon: "🚪",
         shifts: []
       });
       
@@ -1245,15 +1217,15 @@
       const loc = settings.locations.find(l => l.id === locId);
       if (!loc) return;
 
-      const name = prompt("Shift / Duty Title (e.g. Morning Duty):", "Morning Duty");
+      const name = prompt("Shift Title (e.g. Day Shift):", "Day Shift");
       if (!name) return;
-      const startTime = prompt("Start Time (24-hour HH:MM, e.g. 06:00):", "06:00");
+      const startTime = prompt("Start Time (e.g. 8:00 AM or 08:00):", "8:00 AM");
       if (!startTime) return;
-      const endTime = prompt("End Time (24-hour HH:MM, e.g. 14:00):", "14:00");
+      const endTime = prompt("End Time (e.g. 10:00 AM or 10:00):", "10:00 AM");
       if (!endTime) return;
-      const personName = prompt("Duty Member / Officer Name:", "John Doe");
+      const personName = prompt("Duty Member Name (e.g. harshini / vamsi):", "harshini");
       if (!personName) return;
-      const phone = prompt("WhatsApp Mobile Number for this Duty Member:", "9291633800");
+      const phone = prompt("WhatsApp Mobile Number:", "9492470435");
       if (!phone) return;
 
       loc.shifts.push({
@@ -1276,9 +1248,9 @@
 
       const name = prompt("Edit Shift Title:", shift.name);
       if (!name) return;
-      const startTime = prompt("Edit Start Time (HH:MM 24h):", shift.startTime);
+      const startTime = prompt("Edit Start Time (e.g. 8:00 AM / 10:01 AM):", shift.startTime);
       if (!startTime) return;
-      const endTime = prompt("Edit End Time (HH:MM 24h):", shift.endTime);
+      const endTime = prompt("Edit End Time (e.g. 10:00 AM / 4:00 PM):", shift.endTime);
       if (!endTime) return;
       const personName = prompt("Edit Duty Member Name:", shift.personName);
       if (!personName) return;
@@ -1322,7 +1294,7 @@
       settings.locations.forEach(loc => {
         const fullUrl = `${baseUrl}?loc=${encodeURIComponent(loc.id)}`;
         
-        let shiftsSummary = loc.shifts.map(s => `• <strong>${s.name}</strong> (${format12H(s.startTime)}-${format12H(s.endTime)}): 👤 ${s.personName} (📞 ${s.phone})`).join('<br>');
+        let shiftsSummary = loc.shifts.map(s => `• <strong>${s.name}</strong> (${s.startTime}-${s.endTime}): 👤 <span style="color:#0f766e; font-weight:bold;">${s.personName}</span> (📞 ${s.phone})`).join('<br>');
         if (!shiftsSummary) shiftsSummary = "• <em>No duty shifts assigned yet (uses fallback contact)</em>";
 
         const qrContainerId = `qrcode_box_${loc.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
@@ -1393,7 +1365,7 @@
 
     function runRoutingSimulation() {
       const locId = document.getElementById('simLocSelect').value;
-      const timeVal = document.getElementById('simTimeInput').value || "10:00";
+      const timeVal = document.getElementById('simTimeInput').value || "11:07 AM";
       const resultBox = document.getElementById('simResultBox');
 
       const loc = settings.locations.find(l => l.id === locId);
@@ -1402,24 +1374,21 @@
         return;
       }
 
-      const [h, m] = timeVal.split(':').map(Number);
-      const testMins = h * 60 + m;
+      const testMins = parseTimeToMinutes(timeVal);
 
       const shift = evaluateShiftAtTime(loc, testMins);
-
-      const time12H = format12H(timeVal);
 
       if (shift) {
         const targetPhone = getSanitizedPhone(shift.phone);
         resultBox.innerHTML = `
           <div style="color: #0369a1; font-weight: 700; font-size: 15px; margin-bottom: 8px;">
-            ✅ SIMULATION MATCHED ACTIVE SHIFT!
+            ✅ SIMULATION MATCHED DUTY MEMBER!
           </div>
           <div>📍 <strong>Location:</strong> ${loc.name}</div>
-          <div>⏰ <strong>Simulated Scan Time:</strong> ${time12H} (${timeVal})</div>
-          <div>🏷️ <strong>Matched Shift:</strong> ${shift.name} (${format12H(shift.startTime)} - ${format12H(shift.endTime)})</div>
-          <div>👤 <strong>ON DUTY MEMBER:</strong> <span style="font-weight:bold; color:#0369a1;">${shift.personName}</span></div>
-          <div>📞 <strong>TARGET MOBILE:</strong> <span style="font-weight:bold; font-family:monospace;">${formatPhoneDisplay(shift.phone)}</span></div>
+          <div>⏰ <strong>Simulated Scan Time:</strong> ${timeVal} (${testMins} mins from midnight)</div>
+          <div>🏷️ <strong>Matched Shift:</strong> ${shift.name} (${shift.startTime} - ${shift.endTime})</div>
+          <div>👤 <strong>ON DUTY MEMBER:</strong> <span style="font-weight:bold; color:#0369a1; font-size:16px;">${shift.personName}</span></div>
+          <div>📞 <strong>TARGET MOBILE:</strong> <span style="font-weight:bold; font-family:monospace; font-size:16px;">${formatPhoneDisplay(shift.phone)}</span></div>
           <div style="margin-top: 10px; background: #e0f2fe; padding: 8px; border-radius: 6px; font-size: 11px;">
             💬 <strong>WhatsApp Target URL:</strong><br>
             <code>https://wa.me/${targetPhone}?text=PATROL...</code>
@@ -1429,11 +1398,11 @@
         const targetPhone = getSanitizedPhone(settings.fallbackContact.phone);
         resultBox.innerHTML = `
           <div style="color: #b45309; font-weight: 700; font-size: 15px; margin-bottom: 8px;">
-            ⚠️ SIMULATION FALLBACK (NO SHIFT MATCH)
+            ⚠️ SIMULATION FALLBACK (NO SHIFT SCHEDULED)
           </div>
           <div>📍 <strong>Location:</strong> ${loc.name}</div>
-          <div>⏰ <strong>Simulated Scan Time:</strong> ${time12H} (${timeVal})</div>
-          <div>👤 <strong>FALLBACK MEMBER:</strong> <span style="font-weight:bold; color:#b45309;">${settings.fallbackContact.name}</span></div>
+          <div>⏰ <strong>Simulated Scan Time:</strong> ${timeVal} (${testMins} mins)</div>
+          <div>👤 <strong>FALLBACK CONTACT:</strong> <span style="font-weight:bold; color:#b45309;">${settings.fallbackContact.name}</span></div>
           <div>📞 <strong>TARGET MOBILE:</strong> <span style="font-weight:bold; font-family:monospace;">${formatPhoneDisplay(settings.fallbackContact.phone)}</span></div>
         `;
       }
@@ -1446,7 +1415,7 @@
       const fullUrl = `${baseUrl}?loc=${encodeURIComponent(loc.id)}`;
       const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(fullUrl)}`;
 
-      let shiftsSummary = loc.shifts.map(s => `${s.name} (${format12H(s.startTime)}-${format12H(s.endTime)}): ${s.personName}`).join(' | ');
+      let shiftsSummary = loc.shifts.map(s => `${s.name} (${s.startTime}-${s.endTime}): ${s.personName}`).join(' | ');
 
       const printArea = document.getElementById('printableArea');
       printArea.innerHTML = `
@@ -1470,7 +1439,7 @@
       settings.locations.forEach(loc => {
         const fullUrl = `${baseUrl}?loc=${encodeURIComponent(loc.id)}`;
         const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(fullUrl)}`;
-        let shiftsSummary = loc.shifts.map(s => `${s.name} (${format12H(s.startTime)}-${format12H(s.endTime)}): ${s.personName}`).join(' | ');
+        let shiftsSummary = loc.shifts.map(s => `${s.name} (${s.startTime}-${s.endTime}): ${s.personName}`).join(' | ');
 
         printArea.innerHTML += `
           <div class="qr-print-tag">
